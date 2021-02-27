@@ -6,6 +6,7 @@ const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 class Workout{
   date =new Date();
   id = (Date.now() + '').slice(-10);
+  clicks =0;
 
   constructor(coords,distance,duration){
     this.coords = coords;  //[lat,long]
@@ -18,7 +19,12 @@ class Workout{
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     this.description = `${this.type[0].toUpperCase()}${this.type.slice(1)} on ${months[this.date.getMonth()]} ${this.date.getDate()}`;
   }
+
+  click(){
+    this.click++;
+  }
 }
+
 
 class Running extends Workout{
   type = 'running';
@@ -67,11 +73,18 @@ const inputElevation = document.querySelector('.form__input--elevation');
 
 class App{
   #map;
+  #mapZoomLevel =13;
   #mapEvent;
   #workouts = [];
 
   constructor(){
+    //Get user's position
     this._getPosition();
+
+    //get data from local storage
+    this._getLocalStorage();
+
+    //Attach event handler
     form.addEventListener('submit',this._newWorkout.bind(this));
     inputType.addEventListener('change',this._toggleElevationField);
     containerWorkouts.addEventListener('click',this._moveToPopup.bind(this));
@@ -79,8 +92,7 @@ class App{
 
   _getPosition(){
       /* geolocation API to get the location */
-    if(navigator.geolocation)
-      console.log(this);
+    if(navigator.geolocation)  
       navigator.geolocation.getCurrentPosition(this._loadMap.bind(this),function(){
               alert('Could not get your position');
             }
@@ -101,7 +113,12 @@ class App{
 
       /* Handling clicks on map */
         this.#map.on('click',this._showForm.bind(this));
+
+      this.#workouts.forEach(work=>{
+        this._renderWorkoutMarker(work);
+      });
   }
+
   _showForm(mapE){
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
@@ -165,6 +182,9 @@ class App{
 
     //Hide form + clear input fields  
     this._hideForm();
+
+    //Set local storage
+    this._setLocalStorage();
   }
 
   _renderWorkoutMarker(workout){
@@ -183,7 +203,7 @@ class App{
 
   _renderWorkout(workout){
     let html = `<li class="workout workout--${workout.type}" data-id="${workout.id}">
-    <h2 class="workout__title">Running on April 14</h2>
+    <h2 class="workout__title">${workout.description}</h2>
     <div class="workout__details">
       <span class="workout__icon">${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'}</span>
       <span class="workout__value">${workout.distance}</span>
@@ -226,13 +246,23 @@ class App{
 
     _moveToPopup(e){
       const workoutEl = e.target.closest('.workout');
-      console.log(workoutEl);
-
+      
       if(!workoutEl) return;
 
       const workout = this.#workouts.find(work =>work.id === workoutEl.dataset.id);
-      console.log(workout);
+      
+      this.#map.setView(workout.coords,this.#mapZoomLevel,{
+        animate:true,
+        pan:{
+          duration:1,
+        }
+      });
+
+      //using the public interface
+      workout.click();
     }
+
+    
   }
 
 
